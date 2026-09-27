@@ -1,0 +1,11 @@
+JTEKT Cloud Security Policy
+
+Employees must change their passwords every 90 days.
+
+Multi-factor authentication is mandatory for cloud administrator accounts.
+
+Production servers must not be directly accessible from the public internet.
+
+Critical production data must be backed up every 24 hours.
+
+The DevOps team uses Kubernetes to deploy containerized applications.

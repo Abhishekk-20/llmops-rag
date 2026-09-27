@@ -1,0 +1,26 @@
+# Python virtual environments
+venv/
+.venv/
+source/
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# RAG runtime data
+data/uploads/*
+data/chroma/*
+
+# Keep directories
+!data/uploads/.gitkeep
+!data/chroma/.gitkeep
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
