@@ -19,3 +19,4 @@ requests
 prometheus-client
 
 python-dotenv
+openai==3.19.2

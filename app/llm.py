@@ -1,6 +1,12 @@
-from langchain_ollama import ChatOllama
+from openai import OpenAI
 
 from app.config import settings
+
+
+client = OpenAI(
+    base_url=settings.litellm_base_url,
+    api_key=settings.litellm_master_key
+)
 
 
 def generate_answer(question: str, chunks):
@@ -28,12 +34,15 @@ USER QUESTION:
 ANSWER:
 """
 
-    llm = ChatOllama(
-        model=settings.llm_model,
-        base_url=settings.ollama_base_url,
+    response = client.chat.completions.create(
+        model=settings.litellm_model,
+        messages=[
+            {
+                "role": "user",
+                "content": prompt
+            }
+        ],
         temperature=0
     )
 
-    response = llm.invoke(prompt)
-
-    return response.content
+    return response.choices[0].message.content

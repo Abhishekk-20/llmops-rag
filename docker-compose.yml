@@ -1,0 +1,17 @@
+services:
+  litellm:
+    image: ghcr.io/berriai/litellm:main-latest
+    container_name: litellm
+    network_mode: host
+
+    environment:
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY}
+
+    volumes:
+      - ./litellm/config.yaml:/app/config.yaml:ro
+
+    command:
+      - --config
+      - /app/config.yaml
+      - --port
+      - "4000"
