@@ -1,14 +1,21 @@
 import os
 import shutil
+import time
 import uuid
 
-from fastapi import FastAPI, File, UploadFile, HTTPException
+from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi.responses import Response
+from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 
 from app.config import settings
 from app.ingestion import ingest_document
+from app.llm import generate_answer
+from app.metrics import (
+    rag_request_latency_seconds,
+    rag_requests_total,
+)
 from app.models import AskRequest, AskResponse
 from app.retrieval import retrieve_chunks
-from app.llm import generate_answer
 
 
 app = FastAPI(
@@ -17,9 +24,17 @@ app = FastAPI(
 )
 
 
+# --------------------------------------------------
+# Create required directories
+# --------------------------------------------------
+
 os.makedirs(settings.upload_path, exist_ok=True)
 os.makedirs(settings.chroma_path, exist_ok=True)
 
+
+# --------------------------------------------------
+# Root
+# --------------------------------------------------
 
 @app.get("/")
 def root():
@@ -28,12 +43,32 @@ def root():
     }
 
 
+# --------------------------------------------------
+# Health Check
+# --------------------------------------------------
+
 @app.get("/health")
 def health():
     return {
         "status": "ok"
     }
 
+
+# --------------------------------------------------
+# Prometheus Metrics
+# --------------------------------------------------
+
+@app.get("/metrics")
+def metrics():
+    return Response(
+        content=generate_latest(),
+        media_type=CONTENT_TYPE_LATEST
+    )
+
+
+# --------------------------------------------------
+# Document Upload / Ingestion
+# --------------------------------------------------
 
 @app.post("/upload")
 async def upload_document(file: UploadFile = File(...)):
@@ -71,10 +106,21 @@ async def upload_document(file: UploadFile = File(...)):
         )
 
 
+# --------------------------------------------------
+# RAG Question Answering
+# --------------------------------------------------
+
 @app.post("/ask", response_model=AskResponse)
 def ask_question(request: AskRequest):
 
+    # Count every RAG request
+    rag_requests_total.inc()
+
+    # Start total RAG latency timer
+    start_time = time.perf_counter()
+
     try:
+        # Retrieve relevant chunks from ChromaDB
         chunks = retrieve_chunks(
             question=request.question,
             doc_id=request.doc_id,
@@ -87,6 +133,8 @@ def ask_question(request: AskRequest):
                 detail="No document chunks found for this doc_id."
             )
 
+        # Generate answer through:
+        # FastAPI -> LiteLLM -> Ollama -> LLM
         answer = generate_answer(
             question=request.question,
             chunks=chunks
@@ -116,3 +164,8 @@ def ask_question(request: AskRequest):
             status_code=500,
             detail=str(exc)
         )
+
+    finally:
+        # Record complete RAG request latency
+        duration = time.perf_counter() - start_time
+        rag_request_latency_seconds.observe(duration)

@@ -1,4 +1,43 @@
 services:
+
+  rag-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: llmops-rag-api:1.0
+    container_name: rag-api
+    network_mode: host
+
+    environment:
+      APP_NAME: "LLMOps RAG API"
+
+      OLLAMA_BASE_URL: http://localhost:11434
+      LLM_MODEL: llama3.2:1b
+      EMBEDDING_MODEL: nomic-embed-text
+
+      LITELLM_BASE_URL: http://localhost:4000/v1
+      LITELLM_MODEL: llama-local
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY}
+
+      LLM_INPUT_COST_PER_MILLION_TOKENS: "0.0"
+      LLM_OUTPUT_COST_PER_MILLION_TOKENS: "0.0"
+
+      CHROMA_PATH: /app/data/chroma
+      UPLOAD_PATH: /app/data/uploads
+
+      CHUNK_SIZE: "512"
+      CHUNK_OVERLAP: "50"
+      TOP_K: "5"
+
+    volumes:
+      - ./data:/app/data
+
+    depends_on:
+      - litellm
+
+    restart: unless-stopped
+
+
   litellm:
     image: ghcr.io/berriai/litellm:main-latest
     container_name: litellm
@@ -15,3 +54,42 @@ services:
       - /app/config.yaml
       - --port
       - "4000"
+
+    restart: unless-stopped
+
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    network_mode: host
+
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+
+    restart: unless-stopped
+
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    network_mode: host
+
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
+
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+
+    restart: unless-stopped
+
+
+volumes:
+  prometheus-data:
+  grafana-data:

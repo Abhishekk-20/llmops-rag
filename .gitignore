@@ -24,3 +24,27 @@ data/chroma/*
 .vscode/
 .idea/
 .DS_Store
+
+# Secrets / environment
+.env
+.env.*
+!.env.example
+
+# Python
+venv/
+__pycache__/
+*.py[cod]
+
+# Editor temporary files
+*.swp
+*.swo
+
+# Runtime data
+data/
+
+# Monitoring runtime data
+grafana-data/
+prometheus-data/
+
+# Backup files
+*.bak

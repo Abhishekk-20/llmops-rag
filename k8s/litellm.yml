@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: litellm
+  namespace: llmops
+
+spec:
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: litellm
+
+  template:
+    metadata:
+      labels:
+        app: litellm
+
+    spec:
+      containers:
+        - name: litellm
+          image: ghcr.io/berriai/litellm:main-latest
+
+          args:
+            - "--config"
+            - "/app/config.yaml"
+            - "--port"
+            - "4000"
+
+          ports:
+            - containerPort: 4000
+
+          env:
+            - name: LITELLM_MASTER_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: llmops-secret
+                  key: LITELLM_MASTER_KEY
+
+          volumeMounts:
+            - name: litellm-config
+              mountPath: /app/config.yaml
+              subPath: config.yaml
+
+      volumes:
+        - name: litellm-config
+          configMap:
+            name: litellm-config
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: litellm
+  namespace: llmops
+
+spec:
+  selector:
+    app: litellm
+
+  ports:
+    - name: http
+      port: 4000
+      targetPort: 4000
+
+  type: ClusterIP

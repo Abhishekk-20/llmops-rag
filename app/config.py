@@ -13,6 +13,10 @@ class Settings(BaseSettings):
     litellm_master_key: str = ""
     litellm_model: str = "llama-local"
 
+    llm_input_cost_per_million_tokens: float = 0.0
+    llm_output_cost_per_million_tokens: float = 0.0
+
+
     chroma_path: str = "./data/chroma"
     upload_path: str = "./data/uploads"
 
@@ -22,7 +26,8 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(
         env_file=".env",
-        env_file_encoding="utf-8"
+        env_file_encoding="utf-8",
+        extra="ignore"
     )
 
 
