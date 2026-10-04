@@ -20,3 +20,5 @@ prometheus-client
 
 python-dotenv
 openai==3.19.2
+pytest==9.1.1
+httpx
