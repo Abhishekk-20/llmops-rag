@@ -48,3 +48,4 @@ prometheus-data/
 
 # Backup files
 *.bak
+actions-runner/
