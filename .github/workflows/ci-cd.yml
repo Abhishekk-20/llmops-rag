@@ -15,6 +15,10 @@ jobs:
       - Linux
       - X64
 
+    permissions:
+      contents: read
+      packages: write
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -49,16 +53,28 @@ jobs:
         run: |
           kubectl apply --dry-run=client -f k8s/
 
+      - name: Login to GHCR
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | \
+            docker login ghcr.io \
+            -u "${{ github.actor }}" \
+            --password-stdin
+
       - name: Build RAG API image
         run: |
-          docker build \
-            -t llmops-rag-api:${GITHUB_SHA} \
+           docker build \
+            -t ghcr.io/abhishekk-20/llmops-rag:${GITHUB_SHA} \
             .
+
+      - name: Push image to GHCR
+        run: |
+          docker push \
+            ghcr.io/abhishekk-20/llmops-rag:${GITHUB_SHA}
 
       - name: Load image into KIND
         run: |
           kind load docker-image \
-            llmops-rag-api:${GITHUB_SHA} \
+            ghcr.io/abhishekk-20/llmops-rag:${GITHUB_SHA} \
             --name kind
 
       - name: Apply Kubernetes manifests
@@ -68,7 +84,7 @@ jobs:
       - name: Deploy new RAG API image
         run: |
           kubectl set image deployment/rag-api \
-            rag-api=llmops-rag-api:${GITHUB_SHA} \
+            rag-api=ghcr.io/abhishekk-20/llmops-rag:${GITHUB_SHA} \
             -n llmops
 
       - name: Wait for RAG API rollout
@@ -92,6 +108,6 @@ jobs:
           echo "================================"
           echo "LLMOps RAG deployment successful"
           echo "Commit: ${GITHUB_SHA}"
-          echo "Image: llmops-rag-api:${GITHUB_SHA}"
+          echo "Image: ghcr.io/abhishekk-20/llmops-rag:${GITHUB_SHA}"
           echo "Cluster: $(kubectl config current-context)"
           echo "================================"
