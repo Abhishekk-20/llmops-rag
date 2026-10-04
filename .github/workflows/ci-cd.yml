@@ -1,0 +1,87 @@
+name: LLMOps RAG CI/CD
+
+on:
+  push:
+    branches:
+      - main
+
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Build and Deploy to KIND
+    runs-on:
+      - self-hosted
+      - Linux
+      - X64
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Show environment
+        run: |
+          echo "Commit: $GITHUB_SHA"
+          docker --version
+          kubectl version --client
+          kind version
+          kubectl config current-context
+
+      - name: Validate Python
+        run: |
+          python3 -m py_compile \
+            app/config.py \
+            app/metrics.py \
+            app/llm.py \
+            app/main.py
+
+      - name: Validate Kubernetes manifests
+        run: |
+          kubectl apply --dry-run=client -f k8s/
+
+      - name: Build RAG API image
+        run: |
+          docker build \
+            -t llmops-rag-api:${GITHUB_SHA} \
+            .
+
+      - name: Load image into KIND
+        run: |
+          kind load docker-image \
+            llmops-rag-api:${GITHUB_SHA} \
+            --name kind
+
+      - name: Apply Kubernetes manifests
+        run: |
+          kubectl apply -f k8s/
+
+      - name: Deploy new RAG API image
+        run: |
+          kubectl set image deployment/rag-api \
+            rag-api=llmops-rag-api:${GITHUB_SHA} \
+            -n llmops
+
+      - name: Wait for RAG API rollout
+        run: |
+          kubectl rollout status deployment/rag-api \
+            -n llmops \
+            --timeout=180s
+
+      - name: Verify Kubernetes resources
+        run: |
+          kubectl get pods -n llmops
+          kubectl get svc -n llmops
+
+      - name: RAG API health check
+        run: |
+          kubectl exec -n llmops deployment/rag-api -- \
+            python -c "import urllib.request; print(urllib.request.urlopen('http://localhost:8000/health').read().decode())"
+
+      - name: Deployment summary
+        run: |
+          echo "================================"
+          echo "LLMOps RAG deployment successful"
+          echo "Commit: ${GITHUB_SHA}"
+          echo "Image: llmops-rag-api:${GITHUB_SHA}"
+          echo "Cluster: $(kubectl config current-context)"
+          echo "================================"
