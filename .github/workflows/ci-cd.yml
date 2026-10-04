@@ -36,6 +36,8 @@ jobs:
             app/main.py
 
       - name: Run automated tests
+        env:
+          LITELLM_MASTER_KEY: test-only-key
         run: |
           python3 -m venv .ci-venv
           .ci-venv/bin/python -m pip install --upgrade pip
