@@ -36,6 +36,8 @@ metadata:
   namespace: llmops
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
 
   selector:
     matchLabels:
@@ -57,6 +59,28 @@ spec:
 
           ports:
             - containerPort: 9090
+
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+
+          readinessProbe:
+            httpGet:
+              path: /-/ready
+              port: 9090
+            initialDelaySeconds: 10
+            periodSeconds: 10
+
+          livenessProbe:
+            httpGet:
+              path: /-/healthy
+              port: 9090
+            initialDelaySeconds: 20
+            periodSeconds: 20
 
           volumeMounts:
             - name: config
